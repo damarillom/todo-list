@@ -1,10 +1,11 @@
 from django.shortcuts import render
-from rest_framework import generics, viewsets, permissions
+from rest_framework import generics, viewsets
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
 from .models import Task
 from .serializers import UserSerializer, TaskSerializer
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from .permissions import IsOwner
 from rest_framework.response import Response
 
 class UserRegisterView(generics.CreateAPIView):
@@ -22,7 +23,7 @@ class TaskPagination(PageNumberPagination):
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
     pagination_class = TaskPagination
 
     def get_queryset(self):
