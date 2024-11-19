@@ -128,3 +128,27 @@ class TaskAPITest(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn('expiration_date', response.data)
 
+
+class TaskSubtaskTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='user', password='password')
+        self.client.force_authenticate(user=self.user)
+        self.parent_task = Task.objects.create(title="Tarea padre", user=self.user)
+
+    def test_create_subtask(self):
+        data = {
+            "title": "Subtarea",
+            "parent_task": self.parent_task.id
+        }
+        response = self.client.post('/api/tasks/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['parent_task'], self.parent_task.id)
+
+    def test_list_subtasks(self):
+        Task.objects.create(title="Subtarea 1", parent_task=self.parent_task, user=self.user)
+        Task.objects.create(title="Subtarea 2", parent_task=self.parent_task, user=self.user)
+        response = self.client.get(f'/api/tasks/{self.parent_task.id}/', format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['subtasks']), 2)
+

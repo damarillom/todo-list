@@ -13,6 +13,9 @@ class Task(models.Model):
     expiration_date = models.DateField(verbose_name='Fecha de vencimiento', blank=True, null=True)
     state = models.CharField(choices=STATE_CHOICES, max_length=20, default='pending')
     user = models.ForeignKey(User, related_name='tasks', on_delete=models.PROTECT)
+    parent_task = models.ForeignKey(
+        'self', verbose_name='Tarea padre', null=True, blank=True, related_name='subtasks', on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return self.title

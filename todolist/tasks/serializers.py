@@ -20,10 +20,16 @@ class UserSerializer(serializers.ModelSerializer):
     
 
 class TaskSerializer(serializers.ModelSerializer):
+    subtasks = serializers.SerializerMethodField()
+
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'expiration_date', 'state', 'user']
-        read_only_fields = ['user'] 
+        fields = ['id', 'title', 'description', 'expiration_date', 'state', 'user', 'parent_task', 'subtasks']
+        read_only_fields = ['user', 'subtasks'] 
+
+    def get_subtasks(self, obj):
+        subtasks = Task.objects.filter(parent_task=obj)
+        return TaskSerializer(subtasks, many=True).data
 
     def create(self, validated_data):
         state_choices = [choice[0] for choice in Task._meta.get_field('state').choices]
@@ -33,7 +39,7 @@ class TaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 { 'title': 'El título de la tarea no puede estar en blanco y debe ser menor a 200 carácteres.' }
             )
-        elif validated_data.get('state') not in state_choices:
+        elif validated_data.get('state') and validated_data.get('state') not in state_choices:
             raise serializers.ValidationError({ 'state': 'Estado no válido.' })
         elif validated_data.get('expiration_date'):
             try:
