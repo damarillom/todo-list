@@ -1,6 +1,13 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+class Tag(models.Model):
+    name = models.CharField(max_length=50, verbose_name='Nombre', unique=True)
+
+    def __str__(self):
+        return self.name
+    
+
 STATE_CHOICES = [
     ('pending', 'Pendiente'), 
     ('doing', 'En proceso'), 
@@ -16,6 +23,7 @@ class Task(models.Model):
     parent_task = models.ForeignKey(
         'self', verbose_name='Tarea padre', null=True, blank=True, related_name='subtasks', on_delete=models.CASCADE
     )
+    tags = models.ManyToManyField(Tag, blank=True, related_name='tasks')
 
     def __str__(self):
         return self.title

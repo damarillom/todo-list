@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Task
+from .models import Tag, Task
 from datetime import datetime
 
 
@@ -19,12 +19,21 @@ class UserSerializer(serializers.ModelSerializer):
         return user
     
 
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['name']
+    
+
 class TaskSerializer(serializers.ModelSerializer):
     subtasks = serializers.SerializerMethodField()
+    tags = TagSerializer(many=True, required=False)
 
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'expiration_date', 'state', 'user', 'parent_task', 'subtasks']
+        fields = [
+            'id', 'title', 'description', 'expiration_date', 'state', 'user', 'parent_task', 'subtasks', 'tags'
+        ]
         read_only_fields = ['user', 'subtasks'] 
 
     def get_subtasks(self, obj):
@@ -48,5 +57,10 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     { 'expiration_date': 'La fecha de expiración debe de tener un el formato YYYY-MM-DD.' }
                 )
+        tags_data = validated_data.pop('tags', [])
         task = Task.objects.create(**validated_data)
+        for tag_data in tags_data:
+            if 'name' in tag_data:
+                tag, created = Tag.objects.get_or_create(name=tag_data['name'])
+                task.tags.add(tag)
         return task

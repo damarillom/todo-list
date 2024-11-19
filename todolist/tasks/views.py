@@ -2,16 +2,22 @@ from django.shortcuts import render
 from rest_framework import generics, viewsets
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
-from .models import Task
-from .serializers import UserSerializer, TaskSerializer
+from .models import Task, Tag
+from .serializers import UserSerializer, TaskSerializer, TagSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .permissions import IsOwner
-from rest_framework.response import Response
+
 
 class UserRegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny] 
+
+
+class TagViewSet(viewsets.ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class TaskPagination(PageNumberPagination):
@@ -37,8 +43,10 @@ class TaskViewSet(viewsets.ModelViewSet):
         expiration_date = self.request.query_params.get('expiration_date', None)
         if expiration_date:
             params['expiration_date'] = expiration_date
-
         queryset = Task.objects.filter(**params)
+        tags = self.request.query_params.getlist('tags')
+        if tags:
+            queryset = queryset.filter(tags__name__in=tags).distinct()
         return queryset
 
     def perform_create(self, serializer):

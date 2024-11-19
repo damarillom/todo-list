@@ -1,7 +1,7 @@
 from rest_framework.test import APIClient
 from django.test import TestCase
 from django.contrib.auth.models import User
-from .models import Task
+from .models import Task, Tag
 
 class UserAPITest(TestCase):
     def test_signup(self):
@@ -102,7 +102,7 @@ class TaskAPITest(TestCase):
         self.assertIn('title', response.data)
 
     def test_task_with_long_title(self):
-        title = "T" * 201
+        title = 'T' * 201
         data = {
             'title': title,
         }
@@ -134,21 +134,63 @@ class TaskSubtaskTestCase(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='user', password='password')
         self.client.force_authenticate(user=self.user)
-        self.parent_task = Task.objects.create(title="Tarea padre", user=self.user)
+        self.parent_task = Task.objects.create(title='Tarea padre', user=self.user)
 
     def test_create_subtask(self):
         data = {
-            "title": "Subtarea",
-            "parent_task": self.parent_task.id
+            'title': 'Subtarea',
+            'parent_task': self.parent_task.id
         }
         response = self.client.post('/api/tasks/', data, format='json')
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['parent_task'], self.parent_task.id)
 
     def test_list_subtasks(self):
-        Task.objects.create(title="Subtarea 1", parent_task=self.parent_task, user=self.user)
-        Task.objects.create(title="Subtarea 2", parent_task=self.parent_task, user=self.user)
+        Task.objects.create(title='Subtarea 1', parent_task=self.parent_task, user=self.user)
+        Task.objects.create(title='Subtarea 2', parent_task=self.parent_task, user=self.user)
         response = self.client.get(f'/api/tasks/{self.parent_task.id}/', format='json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['subtasks']), 2)
+
+
+class TagTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='user', password='password')
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_tag(self):
+        data = { 'name': 'Urgente' }
+        response = self.client.post('/api/tags/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['name'], 'Urgente')
+        self.assertTrue(Tag.objects.filter(name='Urgente').exists())
+
+    def test_list_tags(self):
+        Tag.objects.create(name='Importante')
+        Tag.objects.create(name='Urgente')
+        response = self.client.get('/api/tags/', format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 2)
+
+    def test_filter_tasks_by_tag(self):
+        tag = Tag.objects.create(name='Urgente')
+        task = Task.objects.create(title='Tarea 1', user=self.user)
+        task.tags.add(tag)
+
+        response = self.client.get('/api/tasks/?tags=Urgente', format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['title'], 'Tarea 1')
+    
+    def test_create_task_with_tags(self):
+        data = {
+            'title': 'Tarea con etiquetas',
+            'tags': [{ 'name': 'Urgente' }, { 'name': 'Importante' }]
+        }
+        response = self.client.post('/api/tasks/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data['tags']), 2)
+        self.assertTrue(Tag.objects.filter(name='Urgente').exists())
+        self.assertTrue(Tag.objects.filter(name='Importante').exists())
 
