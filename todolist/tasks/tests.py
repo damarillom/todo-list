@@ -2,6 +2,9 @@ from rest_framework.test import APIClient
 from django.test import TestCase
 from django.contrib.auth.models import User
 from .models import Task, Tag
+from unittest.mock import patch
+from tasks.tasks import send_reminder_emails
+from datetime import date
 
 class UserAPITest(TestCase):
     def test_signup(self):
@@ -193,4 +196,15 @@ class TagTestCase(TestCase):
         self.assertEqual(len(response.data['tags']), 2)
         self.assertTrue(Tag.objects.filter(name='Urgente').exists())
         self.assertTrue(Tag.objects.filter(name='Importante').exists())
+
+
+class NotificationTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='user', email='test@example.com', password='password')
+        Task.objects.create(title="Tarea Pendiente", expiration_date=date.today(), state='pending', user=self.user)
+
+    @patch('tasks.tasks.send_mail')
+    def test_send_reminder_email(self, mock_send_mail):
+        send_reminder_emails()
+        mock_send_mail.assert_called_once()
 

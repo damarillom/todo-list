@@ -12,6 +12,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:alpine  # Usamos Redis como broker
+
   web:
     build:
       context: .
@@ -24,6 +27,15 @@ services:
       - db
     environment:
       - DEBUG=True
+
+  celery:
+    build: .
+    command: celery -A todolist worker --loglevel=info
+    volumes:
+      - .:/todolist
+    depends_on:
+      - web
+      - redis
 
 volumes:
   postgres_data:
